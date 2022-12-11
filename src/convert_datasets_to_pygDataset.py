@@ -19,7 +19,7 @@ from torch_sparse import coalesce
 
 
 def load_dataset(path='../data/raw_data/', dataset='mimic3',
-                       node_feature_path="../../deepwalk/node-embeddings-with-single",
+                       node_feature_path="../data/mimic3/node-embeddings-mimic3",
                        num_node=7423):
     '''
     this will read the yelp dataset from source files, and convert it edge_list to
@@ -122,9 +122,8 @@ def save_data_to_pickle(data, p2root = '../data/', file_name = None):
 
 
 class dataset_Hypergraph(InMemoryDataset):
-    def __init__(self, root = '../data/pyg_data/hypergraph_dataset_updated/', name = None, 
-                 p2raw = None,
-                 transform=None, pre_transform=None):
+    def __init__(self, root='../data/pyg_data/hypergraph_dataset/', name=None,
+                 p2raw=None, transform=None, pre_transform=None, num_nodes=7423):
         
         existing_dataset = ['mimic3', 'cradle']
         if name not in existing_dataset:
@@ -145,10 +144,11 @@ class dataset_Hypergraph(InMemoryDataset):
         self.root = root
         self.myraw_dir = osp.join(root, self.name, 'raw')
         self.myprocessed_dir = osp.join(root, self.name, 'processed')
+        self.num_nodes = num_nodes
         super(dataset_Hypergraph, self).__init__(osp.join(root, name), transform, pre_transform)
 
         self.data, self.slices = torch.load(self.processed_paths[0])
-
+        
     # @property
     # def raw_dir(self):
     #     return osp.join(self.root, self.name, 'raw')
@@ -183,14 +183,14 @@ class dataset_Hypergraph(InMemoryDataset):
                 print(self.name)
 
                 if self.name in ['mimic3']:
-                    tmp_data = load_dataset(path = self.p2raw,
-                        dataset = self.name,
-                        node_feature_path="../../deepwalk/node-embeddings-with-single", num_node=7423)
+                    tmp_data = load_dataset(path=self.p2raw,
+                        dataset=self.name,
+                        node_feature_path="../data/raw_data/mimic3/node-embeddings-mimic3", num_node=self.num_nodes)
 
                 elif self.name in ['cradle']:
-                    tmp_data = load_dataset(path = self.p2raw,
-                        dataset = self.name,
-                        node_feature_path="../../deepwalk/node-embeddings-cradle", num_node=12725)
+                    tmp_data = load_dataset(path=self.p2raw,
+                        dataset=self.name,
+                        node_feature_path="../data/raw_data/cradle/node-embeddings-cradle", num_node=self.num_nodes)
                     
                 _ = save_data_to_pickle(tmp_data, 
                                           p2root = self.myraw_dir,

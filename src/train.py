@@ -157,7 +157,7 @@ def eval_mimic3(y_true, y_pred, epoch, method, dname, args, mode='dev', threshol
 
     total_acc = []
     total_f1 = []
-    for i in range(25):
+    for i in range(args.num_labels):
         correct = (pred[:, i] == y_true[:, i])
         accuracy = correct.sum() / correct.size
         total_acc.append(accuracy)
@@ -169,20 +169,20 @@ def eval_mimic3(y_true, y_pred, epoch, method, dname, args, mode='dev', threshol
     f1_macro = f1_score(y_true, pred, average='macro')
 
     total_auc = []
-    for i in range(25):
+    for i in range(args.num_labels):
         roc_auc = roc_auc_score(y_true[:, i].reshape(-1), y_pred[:, i].reshape(-1))
         total_auc.append(roc_auc)
 
     roc_auc = roc_auc_score(y_true.reshape(-1), y_pred.reshape(-1))
 
     total_aupr = []
-    for i in range(25):
+    for i in range(args.num_labels):
         aupr = average_precision_score(y_true[:, i].reshape(-1), y_pred[:, i].reshape(-1))
         total_aupr.append(aupr)
     aupr = average_precision_score(y_true.reshape(-1), y_pred.reshape(-1))
 
     import csv
-    with open(f'pheno_next_{mode}_{method}.csv', 'a+', encoding='utf-8') as f:
+    with open(f'mimic3_{mode}_{method}.csv', 'a+', encoding='utf-8') as f:
         writer = csv.writer(f, delimiter='\t')
         writer.writerow(["Epoch", "Phenotype", "acc", "auc", 'aupr', 'f1'])
         for i, (acc_, auc_, aupr_, f1_) in enumerate(zip(total_acc, total_auc, total_aupr, total_f1)):
@@ -210,14 +210,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_prop', type=float, default=0.7)
     parser.add_argument('--valid_prop', type=float, default=0.1)
-    parser.add_argument('--dname', default='walmart-trips-100')
+    parser.add_argument('--dname', default='mimic3')
     parser.add_argument('--method', default='AllSetTransformer')
     parser.add_argument('--epochs', default=30, type=int)
     parser.add_argument('--cuda', default='0', type=str)
     parser.add_argument('--dropout', default=0, type=float)
-    parser.add_argument('--lr', default=0.005, type=float)
+    parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--wd', default=1e-3, type=float)
-    parser.add_argument('--view_lr', default=0.005, type=float)
+    parser.add_argument('--view_lr', default=1e-2, type=float)
     parser.add_argument('--view_wd', default=1e-3, type=float)
     # How many layers of full NLConvs
     parser.add_argument('--All_num_layers', default=2, type=int)
@@ -236,14 +236,16 @@ if __name__ == '__main__':
     # NormLayer for MLP. ['bn','ln','None']
     parser.add_argument('--normalization', default='ln')
     parser.add_argument('--num_features', default=0, type=int)  # Placeholder
-    parser.add_argument('--num_classes', default=25, type=int)  # Placeholder
     parser.add_argument('--num_labels', default=25, type=int)  # set the default for now
-    parser.add_argument('--feature_dim', default=128, type=int)  # feature dim of learnable node feat
+    parser.add_argument('--num_nodes', default=7423, type=int)  # 7423 for mimic and 12725 for cradle
+    # 'all' means all samples have labels, otherwise it indicates the first [num_labeled_data] rows that have the labels
+    parser.add_argument('--num_labeled_data', default='all', type=str)
+    parser.add_argument('--feature_dim', default=64, type=int)  # feature dim of learnable node feat
     # whether the he contain self node or not
     parser.add_argument('--PMA', action='store_true')
     #     Args for Attentions
     parser.add_argument('--heads', default=1, type=int)  # Placeholder
-    parser.add_argument('--output_heads', default=1, type=int)  # Placeholder
+    parser.add_argument('--output_ ', default=1, type=int)  # Placeholder
 
     parser.add_argument('--gamma', type=float, default=0.5)
     parser.add_argument('--threshold', type=float, default=0.5)
@@ -255,11 +257,8 @@ if __name__ == '__main__':
     parser.add_argument('--vanilla', action='store_true')
     parser.add_argument('--remain_percentage', default=0.3, type=float)
 
-    parser.set_defaults(PMA=True)  # True: Use PMA. False: Use Deepsets.
+    parser.set_defaults(PMA=True)
     parser.set_defaults(add_self_loop=True)
-    parser.set_defaults(HyperGCN_mediators=True)
-    parser.set_defaults(HyperGCN_fast=True)
-    parser.set_defaults(HCHA_symdegnorm=False)
 
     args = parser.parse_args()
 
@@ -268,12 +267,11 @@ if __name__ == '__main__':
     synthetic_list = ['mimic3', 'cradle']
 
     dname = args.dname
-    p2raw = '../data/AllSet_all_raw_data/'
-    dataset = dataset_Hypergraph(name=dname, root='../data/pyg_data/hypergraph_dataset_updated/',
-                                 p2raw=p2raw)
+    p2raw = '../data/raw_data/'
+    dataset = dataset_Hypergraph(name=dname, root='../data/pyg_data/hypergraph_dataset/',
+                                 p2raw=p2raw, num_nodes=args.num_nodes)
     data = dataset.data
     args.num_features = dataset.num_features
-    # args.num_classes = dataset.num_classes
     if args.dname in ['mimic3', 'cradle']:
         # Shift the y label to start with 0
         data.y = data.y - data.y.min()
@@ -289,8 +287,6 @@ if __name__ == '__main__':
         if args.add_self_loop:
             data = Add_Self_Loops(data)
         data = norm_contruction(data, option=args.normtype)
-
-    # # Part 2: Load model
 
     model = parse_method(args)
     view_learner = ViewLearner(parse_method(args), args.MLP_hidden)
@@ -314,7 +310,7 @@ if __name__ == '__main__':
     model_optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
     view_optimizer = torch.optim.Adam(view_learner.parameters(), lr=args.view_lr, weight_decay=args.view_wd)
 
-    with open(f'../data/AllSet_all_raw_data/{args.dname}/hyperedges-{args.dname}.txt', 'r') as f:
+    with open(f'../data/raw_data/{args.dname}/hyperedges-{args.dname}.txt', 'r') as f:
         total_edges = []
         maxlen = 0
         for lines in f:
@@ -327,9 +323,9 @@ if __name__ == '__main__':
         for edge in total_edges:
             total_edges_padded.append(edge + [-1] * (maxlen - len(edge)))
 
-    if args.dname in ['mimic3']:
-        N = 12353  # the first 12353 visits have labels
-    elif args.dname in ['cradle']:
+    if args.num_labeled_data != 'all':
+        N = int(args.num_labeled_data)  # the first x visits have labels
+    elif args.num_labeled_data == 'all':
         N = len(total_edges_padded)  # all the samples in cradle have labels
     train_num = int(N * args.train_prop)
     valid_num = int(N * args.valid_prop)
@@ -473,11 +469,11 @@ if __name__ == '__main__':
             vanilla = ""
             if args.vanilla: vanilla = "_vanilla"
             if dname == 'mimic3':
-                fname_dev = f'pheno_next_dev_{args.method}{vanilla}_{args.cuda}.txt'
-                fname_test = f'pheno_next_test_{args.method}{vanilla}_{args.cuda}.txt'
+                fname_dev = f'mimic3_dev_{args.method}{vanilla}.txt'
+                fname_test = f'mimic3_test_{args.method}{vanilla}.txt'
             elif dname == 'cradle':
-                fname_dev = f'cradle_dev_{args.method}{vanilla}_{args.cuda}.txt'
-                fname_test = f'cradle_test_{args.method}{vanilla}_{args.cuda}.txt'
+                fname_dev = f'cradle_dev_{args.method}{vanilla}.txt'
+                fname_test = f'cradle_test_{args.method}{vanilla}.txt'
             # dev set
             with open(fname_dev, 'a+', encoding='utf-8') as f:
                 f.write(
