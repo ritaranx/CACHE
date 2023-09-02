@@ -6,10 +6,12 @@ This repo contains our code for paper Counterfactual and Factual Reasoning over 
 ![CACHE-Framework](docs/cache.png)
 
 ## Data
+**[IMPORTANT, PLEASE READ!]**
+
 In order to facilitate the reproducibility, we provide two toy datasets in [data](data).
-Note that although they're named as `mimic3` and `cradle` (the two datasets we mentioned in our paper), they're in fact randomly generated due to the privacy issue.
+Note that although they're named as `mimic3` and `cradle` (the two datasets we mentioned in our paper), ***they're in fact randomly generated due to the privacy issue***.
 We include them in this repo only to show the format of the two datasts we used.
-Thus, their experimental results should not reflect the performance we report in the paper.
+***Thus, their experimental results should NOT reflect the performance we report in the paper.***
 
 ## Package 
 - PyTorch 1.4
