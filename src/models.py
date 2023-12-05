@@ -43,6 +43,7 @@ class SetGNN(nn.Module):
         self.aggr = args.aggregate
         self.NormLayer = args.normalization
         self.InputNorm = True
+        self.LearnFeat = args.LearnFeat
 
         self.V2EConvs = nn.ModuleList()
         self.E2VConvs = nn.ModuleList()
