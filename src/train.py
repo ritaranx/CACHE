@@ -27,10 +27,10 @@ from sklearn.metrics import f1_score
 from copy import deepcopy
 
 
-def parse_method(args):
+def parse_method(args, data):
     model = None
     if args.dname in ['mimic3', 'cradle']:
-        model = SetGNN(args)
+        model = SetGNN(args, data)
     return model
 
 
@@ -241,6 +241,7 @@ if __name__ == '__main__':
     # 'all' means all samples have labels, otherwise it indicates the first [num_labeled_data] rows that have the labels
     parser.add_argument('--num_labeled_data', default='all', type=str)
     parser.add_argument('--feature_dim', default=64, type=int)  # feature dim of learnable node feat
+    parser.add_argument('--LearnFeat', action='store_true')
     # whether the he contain self node or not
     parser.add_argument('--PMA', action='store_true')
     #     Args for Attentions
@@ -259,6 +260,7 @@ if __name__ == '__main__':
 
     parser.set_defaults(PMA=True)
     parser.set_defaults(add_self_loop=True)
+    parser.set_defaults(LearnFeat=False)
 
     args = parser.parse_args()
 
@@ -288,8 +290,8 @@ if __name__ == '__main__':
             data = Add_Self_Loops(data)
         data = norm_contruction(data, option=args.normtype)
 
-    model = parse_method(args)
-    view_learner = ViewLearner(parse_method(args), args.MLP_hidden)
+    model = parse_method(args, data)
+    view_learner = ViewLearner(parse_method(args, data), args.MLP_hidden)
     # put things to device
     if args.cuda != '-1':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

@@ -27,7 +27,7 @@ import numpy as np
 
 
 class SetGNN(nn.Module):
-    def __init__(self, args, norm=None):
+    def __init__(self, args, data, norm=None):
         super(SetGNN, self).__init__()
         """
         args should contain the following:
@@ -48,6 +48,8 @@ class SetGNN(nn.Module):
         self.E2VConvs = nn.ModuleList()
         self.bnV2Es = nn.ModuleList()
         self.bnE2Vs = nn.ModuleList()
+        if self.LearnFeat:
+            self.x = Parameter(data.x, requires_grad=True)
 
 
         if self.All_num_layers == 0:
@@ -128,6 +130,8 @@ class SetGNN(nn.Module):
         #             data.V2Eedge_index[0] contains nodes and data.V2Eedge_index[1] contains hyperedges
 
         x, edge_index, norm = data.x, data.edge_index, data.norm
+        if self.LearnFeat:
+            x = self.x
 
         cidx = edge_index[1].min()
         edge_index[1] -= cidx  # make sure we do not waste memory
