@@ -49,7 +49,7 @@ def load_dataset(path='../data/raw_data/', dataset='mimic3',
         features = np.random.rand(num_node, int(embedding_dim))
         for lines in f.readlines():
             values = list(map(float, lines.split(" ")))
-            features[int(values[0]) - 1] = np.array(values[1:])
+            features[int(values[0])] = np.array(values[1:])
 
     num_nodes = features.shape[0]
 
